@@ -34,6 +34,7 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.static(join(__dirname, '../tft_web')));
+app.use('/shared', express.static(join(__dirname, '../shared')));
 
 const PORT = process.env.PORT || 3000;
 
