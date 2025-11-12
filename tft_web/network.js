@@ -139,6 +139,8 @@ class NetworkClient {
     }
 }
 
+export { NetworkClient };
+
 if (typeof window !== 'undefined') {
     window.NetworkClient = NetworkClient;
 }
