@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TFT Prototype - Auto-Battler</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        
+        h1 {
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #gameCanvas {
+            border: 3px solid #4a5568;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #0f0f1e;
+            cursor: pointer;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            position: sticky;
+            bottom: 0;
+            background: rgba(26, 26, 46, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+        }
+        
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #rerollBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        #xpBtn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        #fightBtn {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: #333;
+            font-size: 18px;
+            padding: 15px 40px;
+        }
+        
+        .info {
+            display: flex;
+            gap: 30px;
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        
+        .info-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .instructions {
+            max-width: 800px;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 TFT Prototype - Auto-Battler</h1>
+    
+    <div class="info">
+        <div class="info-item">💰 Gold: <span id="goldDisplay">50</span></div>
+        <div class="info-item">❤️ HP: <span id="hpDisplay">100</span></div>
+        <div class="info-item">⭐ Level: <span id="levelDisplay">1</span></div>
+        <div class="info-item">📊 XP: <span id="xpDisplay">0/2</span></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="1200" height="800"></canvas>
+    
+    <div class="controls">
+        <button id="rerollBtn">🎲 Reroll Shop (2g)</button>
+        <button id="xpBtn">📈 Buy XP (4g)</button>
+        <button id="fightBtn">⚔️ START COMBAT</button>
+    </div>
+    
+    <div class="instructions">
+        <strong>How to Play:</strong> Click champions in the shop to buy them (costs gold). 
+        Drag champions from the bench (bottom) to the board to position them. 
+        Buy XP (4g) to level up - your level determines max team size and shop odds for higher cost champions.
+        Collect 3 copies of the same champion to automatically combine them into a 2-star (stronger stats)!
+        Press "START COMBAT" to fight! Units will automatically attack and use abilities when mana reaches 100%.
+    </div>
+    
+    <script type="module" src="game.js"></script>
+</body>
+</html>
