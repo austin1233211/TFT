@@ -200,3 +200,7 @@ GitHub: @austin1233211
 ## License
 
 This is a personal project. Feel free to use and modify as needed.
+
+## Verification
+
+This PR verifies the workflow for creating pull requests in the TFT repository.
