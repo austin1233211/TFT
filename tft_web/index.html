@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TFT Prototype - Auto-Battler</title>
+    <title>TFT Multiplayer - Auto-Battler</title>
     <style>
         body {
             margin: 0;
@@ -133,6 +133,9 @@
         Press "START COMBAT" to fight! Units will automatically attack and use abilities when mana reaches 100%.
     </div>
     
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="shared/gameEngine.js"></script>
+    <script type="module" src="network.js"></script>
     <script type="module" src="game.js"></script>
 </body>
 </html>
