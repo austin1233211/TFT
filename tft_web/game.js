@@ -649,7 +649,9 @@ class GameRenderer {
         this.canvas.addEventListener('mouseup', (e) => this.handlePointerUp(e));
         
         document.getElementById('rerollBtn').addEventListener('click', () => {
-            if (this.gameState.gold >= 2 && !this.gameState.combat) {
+            if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                this.gameState.networkClient.rerollShop();
+            } else if (this.gameState.gold >= 2 && !this.gameState.combat) {
                 this.gameState.gold -= 2;
                 this.gameState.rollShop();
                 this.updateUI();
@@ -657,7 +659,9 @@ class GameRenderer {
         });
         
         document.getElementById('xpBtn').addEventListener('click', () => {
-            if (!this.gameState.combat) {
+            if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                this.gameState.networkClient.buyXP();
+            } else if (!this.gameState.combat) {
                 this.gameState.buyXP();
                 this.updateUI();
             }
@@ -670,6 +674,17 @@ class GameRenderer {
                 this.endCombat();
             }
         });
+        
+        const readyBtn = document.getElementById('readyBtn');
+        if (readyBtn) {
+            readyBtn.addEventListener('click', () => {
+                if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                    this.gameState.networkClient.ready();
+                    readyBtn.disabled = true;
+                    readyBtn.textContent = '⏳ Waiting for others...';
+                }
+            });
+        }
     }
     
     startCombat() {
@@ -730,8 +745,12 @@ class GameRenderer {
             const shopY = this.gameState.shopStartY;
             
             if (x >= shopX && x < shopX + GRID_SIZE && y >= shopY && y < shopY + GRID_SIZE) {
-                this.gameState.buyChampion(i);
-                this.updateUI();
+                if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                    this.gameState.networkClient.buyChampion(i);
+                } else {
+                    this.gameState.buyChampion(i);
+                    this.updateUI();
+                }
                 return;
             }
         }
@@ -783,6 +802,12 @@ class GameRenderer {
         
         const boardX = this.gameState.boardStartX;
         const boardY = this.gameState.boardStartY;
+        const benchX = this.gameState.benchStartX;
+        const benchY = this.gameState.benchStartY;
+        
+        const benchIndex = this.gameState.bench.indexOf(this.gameState.selectedChampion);
+        const boardIndex = this.gameState.board.indexOf(this.gameState.selectedChampion);
+        const fromPosition = boardIndex !== -1 ? this.gameState.selectedChampion.pos : null;
         
         if (x >= boardX && x < boardX + BOARD_COLS * GRID_SIZE &&
             y >= boardY && y < boardY + BOARD_ROWS * GRID_SIZE) {
@@ -802,19 +827,53 @@ class GameRenderer {
                 }
             }
             
-            const benchIndex = this.gameState.bench.indexOf(this.gameState.selectedChampion);
-            if (benchIndex !== -1) {
-                this.gameState.bench[benchIndex] = null;
+            if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                if (benchIndex !== -1) {
+                    this.gameState.networkClient.moveChampion({
+                        from: 'bench',
+                        to: 'board',
+                        fromIndex: benchIndex,
+                        position: [row, col]
+                    });
+                } else if (boardIndex !== -1) {
+                    this.gameState.networkClient.moveChampion({
+                        from: 'board',
+                        to: 'board',
+                        fromPosition: fromPosition,
+                        position: [row, col]
+                    });
+                }
             } else {
-                this.gameState.board = this.gameState.board.filter(c => c !== this.gameState.selectedChampion);
+                if (benchIndex !== -1) {
+                    this.gameState.bench[benchIndex] = null;
+                } else {
+                    this.gameState.board = this.gameState.board.filter(c => c !== this.gameState.selectedChampion);
+                }
+                
+                this.gameState.board = this.gameState.board.filter(c => 
+                    !(c.pos && c.pos[0] === row && c.pos[1] === col)
+                );
+                
+                this.gameState.selectedChampion.pos = [row, col];
+                this.gameState.board.push(this.gameState.selectedChampion);
             }
+        } else if (x >= benchX && x < benchX + BENCH_SIZE * GRID_SIZE &&
+                   y >= benchY && y < benchY + GRID_SIZE) {
             
-            this.gameState.board = this.gameState.board.filter(c => 
-                !(c.pos && c.pos[0] === row && c.pos[1] === col)
-            );
-            
-            this.gameState.selectedChampion.pos = [row, col];
-            this.gameState.board.push(this.gameState.selectedChampion);
+            if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient && boardIndex !== -1) {
+                this.gameState.networkClient.moveChampion({
+                    from: 'board',
+                    to: 'bench',
+                    position: fromPosition
+                });
+            } else if (boardIndex !== -1) {
+                const emptySlot = this.gameState.bench.findIndex(slot => slot === null);
+                if (emptySlot !== -1) {
+                    this.gameState.selectedChampion.pos = null;
+                    this.gameState.board = this.gameState.board.filter(c => c !== this.gameState.selectedChampion);
+                    this.gameState.bench[emptySlot] = this.gameState.selectedChampion;
+                }
+            }
         }
         
         this.gameState.selectedChampion = null;
@@ -973,6 +1032,48 @@ class GameRenderer {
     }
 }
 
-const canvas = document.getElementById('gameCanvas');
-const gameState = new GameState();
-const renderer = new GameRenderer(canvas, gameState);
+window.initGame = function(mode, networkClient = null) {
+    const canvas = document.getElementById('gameCanvas');
+    const gameState = new GameState();
+    gameState.mode = mode;
+    gameState.networkClient = networkClient;
+    
+    const renderer = new GameRenderer(canvas, gameState);
+    
+    if (mode === 'multiplayer' && networkClient) {
+        setupMultiplayerHandlers(gameState, renderer, networkClient);
+    }
+};
+
+function setupMultiplayerHandlers(gameState, renderer, networkClient) {
+    networkClient.on('game_state', (data) => {
+        gameState.gold = data.player.gold;
+        gameState.hp = data.player.hp;
+        gameState.level = data.player.level;
+        gameState.xp = data.player.xp;
+        gameState.board = data.player.board || [];
+        gameState.bench = data.player.bench || Array(9).fill(null);
+        gameState.shop = data.player.shop || [];
+        
+        renderer.updateUI();
+        
+        document.getElementById('roundDisplay').textContent = data.round;
+        document.getElementById('phaseDisplay').textContent = data.phase === 'preparation' ? 'Preparation' : 'Combat';
+    });
+    
+    networkClient.on('combat_result', (result) => {
+        const message = result.won ? 
+            `You won against ${result.opponent}!` : 
+            `You lost to ${result.opponent}. Took ${result.damage} damage.`;
+        
+        setTimeout(() => {
+            alert(message);
+        }, 100);
+    });
+    
+    networkClient.on('game_over', (data) => {
+        setTimeout(() => {
+            alert(`Game Over! Winner: ${data.winner}`);
+        }, 100);
+    });
+}
