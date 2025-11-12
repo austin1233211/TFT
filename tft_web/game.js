@@ -745,8 +745,12 @@ class GameRenderer {
             const shopY = this.gameState.shopStartY;
             
             if (x >= shopX && x < shopX + GRID_SIZE && y >= shopY && y < shopY + GRID_SIZE) {
-                this.gameState.buyChampion(i);
-                this.updateUI();
+                if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                    this.gameState.networkClient.buyChampion(i);
+                } else {
+                    this.gameState.buyChampion(i);
+                    this.updateUI();
+                }
                 return;
             }
         }
@@ -798,6 +802,12 @@ class GameRenderer {
         
         const boardX = this.gameState.boardStartX;
         const boardY = this.gameState.boardStartY;
+        const benchX = this.gameState.benchStartX;
+        const benchY = this.gameState.benchStartY;
+        
+        const benchIndex = this.gameState.bench.indexOf(this.gameState.selectedChampion);
+        const boardIndex = this.gameState.board.indexOf(this.gameState.selectedChampion);
+        const fromPosition = boardIndex !== -1 ? this.gameState.selectedChampion.pos : null;
         
         if (x >= boardX && x < boardX + BOARD_COLS * GRID_SIZE &&
             y >= boardY && y < boardY + BOARD_ROWS * GRID_SIZE) {
@@ -817,19 +827,53 @@ class GameRenderer {
                 }
             }
             
-            const benchIndex = this.gameState.bench.indexOf(this.gameState.selectedChampion);
-            if (benchIndex !== -1) {
-                this.gameState.bench[benchIndex] = null;
+            if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient) {
+                if (benchIndex !== -1) {
+                    this.gameState.networkClient.moveChampion({
+                        from: 'bench',
+                        to: 'board',
+                        fromIndex: benchIndex,
+                        position: [row, col]
+                    });
+                } else if (boardIndex !== -1) {
+                    this.gameState.networkClient.moveChampion({
+                        from: 'board',
+                        to: 'board',
+                        fromPosition: fromPosition,
+                        position: [row, col]
+                    });
+                }
             } else {
-                this.gameState.board = this.gameState.board.filter(c => c !== this.gameState.selectedChampion);
+                if (benchIndex !== -1) {
+                    this.gameState.bench[benchIndex] = null;
+                } else {
+                    this.gameState.board = this.gameState.board.filter(c => c !== this.gameState.selectedChampion);
+                }
+                
+                this.gameState.board = this.gameState.board.filter(c => 
+                    !(c.pos && c.pos[0] === row && c.pos[1] === col)
+                );
+                
+                this.gameState.selectedChampion.pos = [row, col];
+                this.gameState.board.push(this.gameState.selectedChampion);
             }
+        } else if (x >= benchX && x < benchX + BENCH_SIZE * GRID_SIZE &&
+                   y >= benchY && y < benchY + GRID_SIZE) {
             
-            this.gameState.board = this.gameState.board.filter(c => 
-                !(c.pos && c.pos[0] === row && c.pos[1] === col)
-            );
-            
-            this.gameState.selectedChampion.pos = [row, col];
-            this.gameState.board.push(this.gameState.selectedChampion);
+            if (this.gameState.mode === 'multiplayer' && this.gameState.networkClient && boardIndex !== -1) {
+                this.gameState.networkClient.moveChampion({
+                    from: 'board',
+                    to: 'bench',
+                    position: fromPosition
+                });
+            } else if (boardIndex !== -1) {
+                const emptySlot = this.gameState.bench.findIndex(slot => slot === null);
+                if (emptySlot !== -1) {
+                    this.gameState.selectedChampion.pos = null;
+                    this.gameState.board = this.gameState.board.filter(c => c !== this.gameState.selectedChampion);
+                    this.gameState.bench[emptySlot] = this.gameState.selectedChampion;
+                }
+            }
         }
         
         this.gameState.selectedChampion = null;

@@ -2,6 +2,7 @@ import { NetworkClient } from './network.js';
 
 let networkClient = null;
 let currentMode = null;
+let isHost = false;
 
 const elements = {
     modeSelect: document.getElementById('modeSelect'),
@@ -11,6 +12,7 @@ const elements = {
     multiBtn: document.getElementById('multiBtn'),
     createRoomBtn: document.getElementById('createRoomBtn'),
     joinRoomBtn: document.getElementById('joinRoomBtn'),
+    startGameBtn: document.getElementById('startGameBtn'),
     readyBtn: document.getElementById('readyBtn'),
     playerNameCreate: document.getElementById('playerNameCreate'),
     playerNameJoin: document.getElementById('playerNameJoin'),
@@ -100,22 +102,34 @@ elements.joinRoomBtn.addEventListener('click', () => {
     networkClient.joinRoom(roomCode, playerName);
 });
 
+elements.startGameBtn.addEventListener('click', () => {
+    if (isHost && networkClient) {
+        networkClient.startGame();
+        elements.startGameBtn.disabled = true;
+    }
+});
+
 elements.readyBtn.addEventListener('click', () => {
-    networkClient.ready();
-    elements.readyBtn.disabled = true;
-    elements.readyBtn.textContent = '⏳ Waiting for others...';
+    if (networkClient) {
+        networkClient.ready();
+        elements.readyBtn.disabled = true;
+        elements.readyBtn.textContent = '⏳ Waiting for others...';
+    }
 });
 
 function setupMultiplayerHandlers() {
     networkClient.on('room_created', (data) => {
+        isHost = true;
         elements.roomCodeDisplay.textContent = data.roomCode;
         elements.roomSection.classList.remove('hidden');
+        elements.startGameBtn.classList.remove('hidden');
         elements.phaseDisplay.textContent = 'Lobby';
         
         elements.playerNameCreate.value = '';
     });
     
     networkClient.on('room_joined', (data) => {
+        isHost = false;
         elements.roomCodeDisplay.textContent = data.roomCode;
         elements.roomSection.classList.remove('hidden');
         elements.phaseDisplay.textContent = 'Lobby';
@@ -126,11 +140,16 @@ function setupMultiplayerHandlers() {
     
     networkClient.on('lobby_update', (data) => {
         renderPlayerList(data.players);
+        
+        if (isHost && data.players.length >= 2) {
+            elements.startGameBtn.disabled = false;
+        }
     });
     
     networkClient.on('game_started', () => {
         showSection('game');
         elements.fightBtn.classList.add('hidden');
+        elements.readyBtn.classList.remove('hidden');
         window.initGame('multiplayer', networkClient);
     });
     
